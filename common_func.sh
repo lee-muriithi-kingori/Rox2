@@ -83,8 +83,15 @@ resetprop_if_match() {
 
 delprop_if_exists() {
     target="$1"
+    [ -z "$target" ] && return 0
     current=$(resetprop "$target" 2>/dev/null || true)
-    [ -n "$current" ] && resetprop --delete "$target" 2>/dev/null || true
+    [ -z "$current" ] && return 0
+    # resetprop -c (prop_clear) is the canonical Magisk way to make a
+    # property invisible to readers. --delete only succeeds on writable
+    # properties and silently fails on ones Magisk controls, so prefer -c
+    # for root-solution leaks.
+    resetprop -c "$target" 2>/dev/null || \
+        resetprop --delete "$target" 2>/dev/null || true
 }
 
 # ---------------------------------------------------------------------------
