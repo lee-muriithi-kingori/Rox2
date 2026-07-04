@@ -1,6 +1,11 @@
-# Rox2 System Properties v1.0
-# These are the boot-time properties I want every protected app to see.
-# Rox2 applies them during post-fs-data so they're in place before Zygote starts.
+# Rox2 system properties v1.1
+# I extended this list after testing against Native Detector. The v1.0 set
+# `ro.boot.vbmeta.device_state=locked` but left digest/size/alg as zeros,
+# which is itself a fingerprint — stock devices always populate them.
+#
+# Where a value is device-specific (vbmeta digest, for instance), I set a
+# reasonable non-empty placeholder. If you have a real stock vbmeta image,
+# drop the actual values in here over these defaults.
 
 # Build properties — clean user-build
 ro.build.tags=release-keys
@@ -9,14 +14,27 @@ ro.secure=1
 ro.adb.secure=1
 ro.debuggable=0
 ro.force.debuggable=0
+ro.build.selinux=0
 
-# Verified boot — locked/enforcing chain
+# Verified boot — full chain populated so v1.0's empty zeros don't fingerprint us.
 ro.boot.flash.locked=1
 ro.boot.verifiedbootstate=green
 ro.boot.veritymode=enforcing
+
+# vbmeta chain — non-empty so detector probes don't show ""
+# Replace these with real values if you have the stock image.
 ro.boot.vbmeta.device_state=locked
+ro.boot.vbmeta.size=51200
+ro.boot.vbmeta.avb_version=1.2
+ro.boot.vbmeta.hash_alg=sha256
+ro.boot.vbmeta.digest=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+vendor.boot.flash.locked=1
 vendor.boot.verifiedbootstate=green
 vendor.boot.vbmeta.device_state=locked
+vendor.boot.vbmeta.size=51200
+vendor.boot.vbmeta.avb_version=1.2
+vendor.boot.vbmeta.hash_alg=sha256
 
 # Secureboot
 ro.secureboot.lockstate=locked
@@ -25,16 +43,24 @@ ro.boot.secureboot=1
 
 # OEM unlock disabled
 sys.oem_unlock_allowed=0
-vendor.boot.flash.locked=1
 
-# Boot mode — always boot (never recovery)
+# Boot mode — never recovery, never bootloader
 ro.boot.mode=boot
 ro.bootmode=boot
 vendor.boot.mode=boot
 
-# Crypto — every protected app expects encrypted userdata
+# Crypto state — every protected app expects this
 ro.crypto.state=encrypted
 ro.crypto.type=file
+
+# Hardware platform — covers ro.boot.hardware.platform probes
+ro.boot.hardware=qcom
+ro.boot.hardware.platform=qcom
+ro.boot.hardware.revision=0
+ro.boot.serialno=
+ro.boot.bootloader=
+ro.boot.baseband=msm
+ro.boot.revision=0
 
 # Developer indicators
 persist.sys.adb.notify=0

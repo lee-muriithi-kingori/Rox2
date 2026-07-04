@@ -23,7 +23,7 @@ OUTPUT_DIR="$ROOT_DIR/output"
 
 MODULE_ID="Rox2"
 MODULE_NAME="Rox2"
-DEFAULT_VERSION="$(grep '^version=' "$ROOT_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
+DEFAULT_VERSION="$(grep '^version=' "$ROOT_DIR/module.prop" 2>/dev/null | cut -d= -f2 || echo v1.1)"
 VERSION="${1:-$DEFAULT_VERSION}"
 VERSION_CODE="$(grep '^versionCode=' "$ROOT_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
 CHECK_ONLY=false

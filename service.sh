@@ -1,39 +1,35 @@
 #!/system/bin/sh
 # Rox2 - service.sh
 # Late-start, after boot is mostly done. We:
-#   1. Tighten property state once more (in case anything reset)
-#   2. Start the per-app monitor loop that re-applies hiding when
-#      target apps come into focus.
+#   1. Tighten property state once more
+#   2. Start the per-app monitor loop
 
 MODPATH="${0%/*}"
 . "$MODPATH/common_func.sh"
 
-log_info "=== service.sh start ==="
+log_info "=== service.sh v1.1 start ==="
 
-# Re-apply on late start — sometimes props flip back if early reset
-# races with system services.
 boot_summary
-spoof_boot_state
-hide_keystore_leaks
+allowlist_init
+ensure_all_flags
 
-# ----- monitor loop -----
+if is_flag_enabled spoof;   then spoof_boot_state;   fi
+if is_flag_enabled keystore; then hide_keystore_leaks; fi
+if is_flag_enabled zygisk;   then scrub_root_paths;    fi
+
 start_monitor() {
     monitor_pid_file="$MODPATH/.state_monitor_pid"
     rm -f "$monitor_pid_file"
-
-    # Background loop. POLL_INTERVAL_S is the seconds between scans.
     POLL_INTERVAL_S="${ROX2_POLL_INTERVAL:-3}"
 
     (
-        # Read fresh state every cycle so WebUI toggle changes take effect immediately.
         while :; do
             sleep "$POLL_INTERVAL_S" 2>/dev/null || sleep 3
-
             [ -f "$MODPATH/disable" ] && exit 0
+            # Re-read flags every cycle so WebUI toggle changes kick in.
+            ensure_all_flags
 
-            # If a target app surfaces, re-apply per-process hiding quickly.
             for line in $(pm list packages 2>/dev/null | sed 's/^package://'); do
-                # Only check apps that are actually running.
                 if pidof "$line" >/dev/null 2>&1; then
                     allowed=$(is_allowlisted "$line")
                     if [ "$allowed" = "0" ]; then
@@ -50,5 +46,5 @@ start_monitor() {
 }
 
 start_monitor
-log_info "=== service.sh complete ==="
+log_info "=== service.sh v1.1 complete ==="
 exit 0

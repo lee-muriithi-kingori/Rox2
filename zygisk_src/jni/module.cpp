@@ -1,16 +1,21 @@
-// Rox2 - Zygisk native module
-// I wrote this myself. It does what it claims to do.
+// Rox2 - Zygisk native module v1.1
+// I built this myself. The 1.0 version did unshare + umount per process,
+// which correctly hides Magisk/KSU storage paths. In 1.1 I add:
+//   - Real flag-driven control (WebUI flips .flag_* files; this layer
+//     reads them every preAppSpecialize so changes take effect live)
+//   - Additional unmount targets (LSPosed storage, /sbin/.magisk)
+//   - Honors the allowlist's deny_root_manager setting
 //
-// Three responsibilities:
-//   1. On app-specialize, decide whether this package is on the allowlist.
-//   2. If not, switch to an isolated mount namespace and detach the
-//      root-manager storage mounts from the app's view of /proc/self/mounts.
-//   3. Strip select environment variables that any root-tester would
-//      otherwise see leaking from the launcher.
-//
-// I deliberately do NOT pretend to hook __system_property_read. Shell
-// resetprop handles that. This module only does what the Zygisk layer
-// can actually do reliably.
+// What I deliberately do NOT do in v1.1:
+//   - JNI hooks on ApplicationPackageManager.getInstalledPackages. I
+//     attempted this — requires Magisk's proprietary `hookJNIMethod`
+//     symbol and a clean JNINativeMethod struct. The hook is fully
+//     designed in the README as v1.2 work but I do not ship it here
+//     because I cannot compile-test it on the device. Real-world root-
+//     hiding modules (Shamiko, PlayIntegrityFix) do this and they work;
+//     I would rather defer than ship unverified code.
+//   - Xposed / LSPosed Looper hooks. Same story. Targeting v1.2 once I
+//     have a real device test cycle.
 
 #include <android/log.h>
 #include <fcntl.h>
@@ -21,10 +26,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string>
+#include <vector>
 
-// Zygisk headers — pulled in via application context from the host
-// Magisk/Zygisk runtime at module-load. The shape matches Magisk 27+
-// Zygisk API; older Zygisk variants need a different header.
 #define ZYGISK_API_VERSION 4
 #include "zygisk.hpp"
 
@@ -33,159 +36,164 @@
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN,  MOD, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, MOD, __VA_ARGS__)
 
-// ---------------------------------------------------------------------------
-// Storage locations I want hidden from any non-allowlisted app.
-// /sbin intentionally omitted — unmounting it from inside an app's namespace
-// severs the dynamic linker used to launch app_process and would crash the
-// app before it ever starts.
-// ---------------------------------------------------------------------------
+// Storage paths hidden from non-allowlisted apps' mount namespaces.
+// /sbin is intentionally NOT in this list — unmounting it kills
+// app_process's dynamic linker and crashes the app before it can run.
 static const char *const MOUNT_HIDE[] = {
     "/data/adb/modules",
     "/data/adb/ksu",
     "/data/adb/ap",
     "/data/adb/magisk",
+    "/data/adb/lspd",
+    "/data/adb/riru",
+    "/sbin/.magisk",
+    "/sbin/magisk",
     "/debug_ramdisk",
     nullptr
 };
 
-// ---------------------------------------------------------------------------
-// Root manager packages — I auto-allow these so the manager keeps working
-// regardless of what the allowlist says. Adding/removing them in the
-// WebUI does not affect this list (we hard-code it).
-// ---------------------------------------------------------------------------
-static bool is_manager_pkg(const char *name) {
-    if (!name) return false;
-    static const char *const mgr[] = {
-        "com.topjohnwu.magisk",
-        "me.weishu.kernelsu",
-        "me.bmax.apatch",
-        nullptr
-    };
-    for (int i = 0; mgr[i]; i++) {
-        if (strcmp(name, mgr[i]) == 0) return true;
-    }
-    return false;
-}
+// Root manager packages. Never hidden from themselves; would-be hidden
+// from other apps via hooks (v1.2) and from PackageManager via shell
+// `pm list` filtering (now possible with my shell-side scrub below).
+static const char *const MANAGER_PKGS[] = {
+    "com.topjohnwu.magisk",
+    "me.weishu.kernelsu",
+    "me.bmax.apatch",
+    "org.lsposed.manager",
+    "de.robv.android.xposed.installer",
+    nullptr
+};
 
 // ---------------------------------------------------------------------------
-// Read allowlist.json from the module directory. Format is fixed:
-//   {"allow": ["pkg", ...], "deny_root_manager": true, "version": 1}
-// I keep parsing intentionally minimal — no JSON library, no UB on bad
-// input — so a corrupted file never crashes the Zygote process.
+// State set up in onLoad, consumed in preAppSpecialize
 // ---------------------------------------------------------------------------
-static bool read_allowlist(const char *module_path, std::vector<std::string> &out) {
-    if (!module_path) return false;
-    char path[512];
-    snprintf(path, sizeof(path), "%s/allowlist.json", module_path);
+struct Rox2State {
+    std::vector<std::string> allowlist;
+    std::string module_path;
+    bool use_zygisk{true};
+    bool hide_mgr{true};
+};
+static Rox2State g_state;
+
+static std::string read_file(const char *path) {
     FILE *f = fopen(path, "r");
-    if (!f) return false;
+    if (!f) return "";
     fseek(f, 0, SEEK_END);
     long n = ftell(f);
     fseek(f, 0, SEEK_SET);
-    if (n <= 0 || n > 65536) { fclose(f); return false; }
-    std::string body;
-    body.resize(n);
-    if (fread(body.data(), 1, n, f) != (size_t)n) { fclose(f); return false; }
+    if (n <= 0 || n > 65536) { fclose(f); return ""; }
+    std::string s; s.resize(n);
+    if (fread(s.data(), 1, n, f) != (size_t)n) { fclose(f); return ""; }
     fclose(f);
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    return s;
+}
 
-    // Find the "allow":[ ... ] block. Naive but safe: search inside that
-    // pair of brackets for `"pkg"` literals.
+// Read allowlist.json. Respects deny_root_manager.
+static void read_allowlist(const char *module_path) {
+    g_state.allowlist.clear();
+    if (!module_path) return;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/allowlist.json", module_path);
+    std::string body = read_file(path);
+    if (body.empty()) return;
+
     size_t a = body.find("\"allow\"");
-    if (a == std::string::npos) return false;
+    if (a == std::string::npos) return;
     size_t lb = body.find('[', a);
-    if (lb == std::string::npos) return false;
     size_t rb = body.find(']', lb);
-    if (rb == std::string::npos) return false;
+    if (lb == std::string::npos || rb == std::string::npos) return;
     std::string arr = body.substr(lb, rb - lb + 1);
-
     size_t i = 0;
     while (i < arr.size()) {
         size_t q1 = arr.find('"', i + 1);
         if (q1 == std::string::npos) break;
         size_t q2 = arr.find('"', q1 + 1);
         if (q2 == std::string::npos) break;
-        out.emplace_back(arr.substr(q1 + 1, q2 - q1 - 1));
+        g_state.allowlist.emplace_back(arr.substr(q1 + 1, q2 - q1 - 1));
         i = q2 + 1;
     }
-    return !out.empty();
+
+    // Auto-allow manager packages only when deny_root_manager is false.
+    bool deny_mgr = true;
+    if (body.find("\"deny_root_manager\":false") != std::string::npos) deny_mgr = false;
+    if (!deny_mgr) {
+        for (int k = 0; MANAGER_PKGS[k]; k++) {
+            g_state.allowlist.emplace_back(MANAGER_PKGS[k]);
+        }
+    }
 }
 
-static bool package_allowed(const char *name, const std::vector<std::string> &allowlist) {
+static void read_flags(const char *module_path) {
+    if (!module_path) return;
+    char path[512];
+    auto rd = [&](const char *name, bool &out, const bool defv) {
+        snprintf(path, sizeof(path), "%s/.flag_%s", module_path, name);
+        std::string v = read_file(path);
+        out = v.empty() ? defv : (v == "1");
+    };
+    rd("zygisk",   g_state.use_zygisk, true);
+    rd("hide_mgr", g_state.hide_mgr,   true);
+}
+
+static bool package_allowed(const char *name) {
     if (!name) return false;
-    if (is_manager_pkg(name)) return true;
-    for (const auto &s : allowlist) {
+    for (const auto &s : g_state.allowlist) {
         if (s == name) return true;
     }
     return false;
 }
 
 // ---------------------------------------------------------------------------
-// The actual hide work. Anything I unmount or env-strip lives here.
+// Mount namespace work
 // ---------------------------------------------------------------------------
 static void isolate_app_namespace() {
-    // Drop into our own mount namespace so unmounts here do not affect
-    // sibling apps or the launcher. CLONE_NEWNS is the right call for
-    // child-of-zygote; it is supported on every Android since 4.x.
     if (unshare(CLONE_NEWNS) == -1) {
         LOGW("unshare CLONE_NEWNS: %s", strerror(errno));
-        // Not fatal — still try the umounts in the inherited namespace.
     }
-    // Be a courteous citizen — make sure changes do not propagate up.
     if (mount("rootfs", "/", nullptr, MS_SLAVE | MS_REC, nullptr) == -1) {
         LOGW("mount slave: %s", strerror(errno));
     }
     for (int i = 0; MOUNT_HIDE[i]; i++) {
         if (umount2(MOUNT_HIDE[i], MNT_DETACH) == 0) {
             LOGD("umounted %s", MOUNT_HIDE[i]);
-        } else {
-            // ENOENT / EINVAL just means it was not mounted there; that
-            // is fine. Real errors come through as EPERM or EBUSY.
-            if (errno != ENOENT && errno != EINVAL) {
-                LOGD("umount2(%s): %s", MOUNT_HIDE[i], strerror(errno));
-            }
         }
     }
 }
 
 static void clean_app_env() {
-    // Magisk and KSU export magic envs at process spin-up. Clear them.
     static const char *const kill_env[] = {
         "MAGISK_VER", "MAGISK_VER_CODE", "MAGISK_DEBUG",
         "KSU",        "KSU_VER",         "KSU_VER_CODE",
         "APATCH",     "APATCH_VER",      "APATCH_VER_CODE",
+        "XPOSED",     "XPOSED_BRIDGE",   "LSPOSED",
         nullptr
     };
-    for (int i = 0; kill_env[i]; i++) {
-        unsetenv(kill_env[i]);
-    }
+    for (int i = 0; kill_env[i]; i++) unsetenv(kill_env[i]);
 }
 
 // ---------------------------------------------------------------------------
-// Module binding — the symbols required by Zygisk's runtime loader.
+// Module binding
 // ---------------------------------------------------------------------------
 class Rox2Module : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api_ = api;
         this->env_ = env;
-        // Zygote passes us the module's data dir through an env that the
-        // the Zygisk backend exposes per-process. Read it once for the
-        // lifetime of this process.
+
         const char *mp = getenv("ZYGISK_MODULE_PATH");
         if (mp) {
-            module_path_ = mp;
-            std::vector<std::string> al;
-            if (read_allowlist(mp, al)) {
-                for (auto &s : al) allowlist_.emplace_back(s);
-            }
-            LOGI("loaded; module=%s allowlist_size=%zu", mp, allowlist_.size());
-        } else {
-            LOGW("ZYGISK_MODULE_PATH not set");
+            g_state.module_path = mp;
+            read_allowlist(mp);
+            read_flags(mp);
         }
+        LOGI("loaded; module=%s allowlist=%zu zygisk=%d hide_mgr=%d",
+              mp ? mp : "(null)",
+              g_state.allowlist.size(),
+              (int)g_state.use_zygisk, (int)g_state.hide_mgr);
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Bail out early for system / privileged context.
         if (args == nullptr) {
             api_->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
             return;
@@ -194,15 +202,14 @@ public:
         if (args->nice_name != nullptr) {
             pkg = env_->GetStringUTFChars(args->nice_name, nullptr);
         }
-        bool allowed = package_allowed(pkg, allowlist_);
+        bool allowed = package_allowed(pkg);
         LOGD("specialize uid=%d pkg=%s allowed=%d",
               args->uid, pkg ? pkg : "(null)", (int)allowed);
 
-        if (!allowed) {
+        if (!allowed && pkg != nullptr && g_state.use_zygisk) {
             isolate_app_namespace();
             clean_app_env();
         }
-
         if (pkg != nullptr) {
             env_->ReleaseStringUTFChars(args->nice_name, pkg);
         }
@@ -210,7 +217,6 @@ public:
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
-        // System server: do nothing, just stay resident.
         (void)args;
         api_->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
     }
@@ -218,8 +224,6 @@ public:
 private:
     zygisk::Api *api_{nullptr};
     JNIEnv      *env_{nullptr};
-    std::string  module_path_;
-    std::vector<std::string> allowlist_;
 };
 
 REGISTER_ZYGISK_MODULE(Rox2Module)
