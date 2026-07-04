@@ -1,0 +1,13 @@
+id=RoxBoot
+name=Rox-Boot - Bootloader Hide Companion
+version=v1.0
+versionCode=100
+author=lee-muriithi-kingori
+description=Companion to Rox2. Goes one level deeper on bootloader signal hiding at the kernel cmdline and /proc level. Does NOT and CANNOT defeat hardware-backed Play Integrity attestation. For STRONG integrity use TrickyStore with your own extracted keybox.
+updateJson=https://raw.githubusercontent.com/lee-muriithi-kingori/Rox2/main/companion/boot/update.json
+support=https://github.com/lee-muriithi-kingori/Rox2/issues
+community=https://t.me/lestramk
+donate=https://github.com/sponsors/lee-muriithi-kingori
+webroot=webroot
+minMagisk=27000
+minApi=24

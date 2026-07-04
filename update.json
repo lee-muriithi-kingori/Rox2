@@ -1,7 +1,7 @@
 {
-    "version": "v1.1",
-    "versionCode": 110,
-    "zipUrl": "https://github.com/lee-muriithi-kingori/Rox2/releases/download/v1.1/Rox2-v1.1.zip",
-    "changelog": "https://github.com/lee-muriithi-kingori/Rox2/releases/tag/v1.1",
+    "version": "v1.2",
+    "versionCode": 120,
+    "zipUrl": "https://github.com/lee-muriithi-kingori/Rox2/releases/download/v1.2/Rox2-v1.2.zip",
+    "changelog": "https://github.com/lee-muriithi-kingori/Rox2/releases/tag/v1.2",
     "tag": "stable"
 }

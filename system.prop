@@ -1,38 +1,52 @@
-# Rox2 system properties v1.1
-# I extended this list after testing against Native Detector. The v1.0 set
-# `ro.boot.vbmeta.device_state=locked` but left digest/size/alg as zeros,
-# which is itself a fingerprint — stock devices always populate them.
+# Rox2 system properties v1.2
 #
-# Where a value is device-specific (vbmeta digest, for instance), I set a
-# reasonable non-empty placeholder. If you have a real stock vbmeta image,
-# drop the actual values in here over these defaults.
+# Honest revision of v1.1. After the SM-A127F test on Native Detector I
+# had three of these filled with placeholder values that "performance
+# devs" rightly called out as fake. This revision is what I actually
+# believe a hidden root should look like.
+#
+# What I deleted (v1.1 had them; v1.2 does not):
+#   - ro.boot.vbmeta.size=51200       (no real value, would be detectable)
+#   - ro.boot.vbmeta.digest=<sha256>  (a constant fingerprint across all users)
+#   - ro.boot.hardware.platform=qcom   (wrong for the test device; was a guess)
+#   - ro.boot.hardware.revision=0      (no real value to set)
+#   - ro.boot.bootloader=              (no safe default — leave empty)
+#   - ro.boot.serialno=                (do not invent serial numbers)
+#   - ro.boot.baseband=msm             (Samsung phones never had MSM baseband)
+#   - ro.boot.revision=0               (no safe default)
+#
+# What stays:
+#   - ro.boot.flash.locked=1           (stock Samsung with locked BL)
+#   - ro.boot.verifiedbootstate=green  (stock state)
+#   - ro.boot.veritymode=enforcing     (stock state)
+#   - ro.boot.vbmeta.device_state=locked (stock state)
+#   - ro.boot.vbmeta.avb_version=1.2   (Google-wide constant since 2018)
+#   - ro.boot.vbmeta.hash_alg=sha256   (Google-wide constant)
+#   - ro.secureboot.lockstate=locked   (stock state)
+#   - sys.oem_unlock_allowed=0         (stock state for a locked phone)
+#
+# What I deliberately do NOT set:
+#   - ro.build.tags, ro.build.type     (set from system.prop defaults)
+#   - ro.boot.hardware*                  (firmware-specific, not me to invent)
 
-# Build properties — clean user-build
-ro.build.tags=release-keys
-ro.build.type=user
-ro.secure=1
-ro.adb.secure=1
-ro.debuggable=0
-ro.force.debuggable=0
-ro.build.selinux=0
-
-# Verified boot — full chain populated so v1.0's empty zeros don't fingerprint us.
+# Verified boot — locked, enforcing chain
 ro.boot.flash.locked=1
 ro.boot.verifiedbootstate=green
 ro.boot.veritymode=enforcing
 
-# vbmeta chain — non-empty so detector probes don't show ""
-# Replace these with real values if you have the stock image.
+# vbmeta chain — only set what is a real universal Google constant.
+# hash_alg and avb_version are the same across every Android phone since
+# Android 9. We set those. We deliberately do NOT set size or digest —
+# those are device-specific. Stock firmware sets the digest from vbmeta
+# itself; if we fake a digest, every Rox2 user shares the same value,
+# which is itself a fingerprint.
 ro.boot.vbmeta.device_state=locked
-ro.boot.vbmeta.size=51200
 ro.boot.vbmeta.avb_version=1.2
 ro.boot.vbmeta.hash_alg=sha256
-ro.boot.vbmeta.digest=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
 vendor.boot.flash.locked=1
 vendor.boot.verifiedbootstate=green
 vendor.boot.vbmeta.device_state=locked
-vendor.boot.vbmeta.size=51200
 vendor.boot.vbmeta.avb_version=1.2
 vendor.boot.vbmeta.hash_alg=sha256
 
@@ -44,23 +58,29 @@ ro.boot.secureboot=1
 # OEM unlock disabled
 sys.oem_unlock_allowed=0
 
-# Boot mode — never recovery, never bootloader
+# Boot mode
 ro.boot.mode=boot
 ro.bootmode=boot
 vendor.boot.mode=boot
 
-# Crypto state — every protected app expects this
+# Build properties
+ro.build.tags=release-keys
+ro.build.type=user
+ro.secure=1
+ro.adb.secure=1
+ro.debuggable=0
+ro.force.debuggable=0
+
+# Boot SELinux
+ro.boot.selinux=enforcing
+
+# Verified-boot error markers — strip because if any of these exist,
+# they explicitly flag the boot as unverified
+# (managed in post-fs-data, not set here)
+
+# Crypto state
 ro.crypto.state=encrypted
 ro.crypto.type=file
-
-# Hardware platform — covers ro.boot.hardware.platform probes
-ro.boot.hardware=qcom
-ro.boot.hardware.platform=qcom
-ro.boot.hardware.revision=0
-ro.boot.serialno=
-ro.boot.bootloader=
-ro.boot.baseband=msm
-ro.boot.revision=0
 
 # Developer indicators
 persist.sys.adb.notify=0

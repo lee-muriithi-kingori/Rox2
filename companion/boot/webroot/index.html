@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rox-Boot</title>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0d1117; color: #c9d1d9; margin: 0; padding: 24px;
+  line-height: 1.5;
+}
+.app { max-width: 600px; margin: 0 auto; }
+h1 { font-size: 22px; }
+h2 { font-size: 16px; margin-top: 24px; color: #58a6ff; }
+.banner {
+  background: rgba(210,153,34,0.12); color: #d29922;
+  border: 1px solid #d29922; border-radius: 10px;
+  padding: 12px 16px; margin: 12px 0; font-size: 13px;
+}
+.banner.warn { background: rgba(248,81,73,0.12); color: #f85149;
+  border-color: #f85149; }
+.card {
+  background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+  padding: 12px 16px; margin: 10px 0; font-family: 'SF Mono', monospace;
+  font-size: 12px;
+}
+.k { color: #58a6ff; }
+.v { color: #3fb950; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>R<em style="color:#58a6ff;font-style:normal">o</em>x-Boot</h1>
+  <p>v1.0 &middot; companion to <a href="https://github.com/lee-muriithi-kingori/Rox2" style="color:#58a6ff">Rox2</a></p>
+
+  <div class="banner warn">
+    <strong>I cannot fake the hardware.</strong> Rox-Boot hides kernel-level
+    signals (cmdline, props, error markers). It does not defeat hardware-backed
+    Play Integrity attestation. For <strong>STRONG</strong> integrity you must
+    run <a href="https://github.com/5ec1cff/TrickyStore" style="color:#f85149">TrickyStore</a>
+    with a keybox from your own device.
+  </div>
+
+  <h2>What gets cleaned at boot</h2>
+  <div class="card">
+    <div><span class="k">ro.boot.flash.locked</span>=<span class="v">1</span></div>
+    <div><span class="k">ro.boot.verifiedbootstate</span>=<span class="v">green</span></div>
+    <div><span class="k">ro.boot.vbmeta.device_state</span>=<span class="v">locked</span></div>
+    <div><span class="k">ro.secureboot.lockstate</span>=<span class="v">locked</span></div>
+    <div><span class="k">sys.oem_unlock_allowed</span>=<span class="v">0</span></div>
+    <div><span class="k">ro.boot.mode</span>=<span class="v">boot</span></div>
+  </div>
+  <p>Set in <code>post-fs-data.sh</code> via Magisk resetprop, before Zygote.</p>
+
+  <h2>What gets scrubbed from /proc/cmdline</h2>
+  <div class="card">
+    <div>androidboot.unlocked=<span class="v">stripped</span></div>
+    <div>androidboot.verifiedbootstate=<span class="v">reset to green</span></div>
+    <div>androidboot.verifier=<span class="v">reset to locked</span></div>
+  </div>
+  <p>When the kernel allows bind-mounting a single <code>/proc/cmdline</code> file,
+  Rox-Boot replaces the content. When it does not, the upstream cmdline remains
+  visible — this is logged.</p>
+
+  <h2>What I do not touch</h2>
+  <ul>
+    <li><strong>Keymaster attestation.</strong> Whatever is in your device's TEE
+    is what it is. Switching this would require a keybox from your own device
+    (TrickyStore) — that path is documented in the Rox2 README.</li>
+    <li><strong>vbmeta digest / size.</strong> I will not fake these. Stock
+    firmware has device-specific values; a constant value across all users is
+    itself a fingerprint.</li>
+    <li><strong>Kernel cmdline if the kernel refuses bind-mount.</strong> I
+    surface this in the log so you know it happened, not silently drop it.</li>
+  </ul>
+
+  <p style="margin-top:24px;color:#8b949e;font-size:12px">
+    Community: <a href="https://t.me/lestramk" style="color:#58a6ff">@lestramk</a>
+    &middot; Repo: <a href="https://github.com/lee-muriithi-kingori/Rox2" style="color:#58a6ff">github</a>
+  </p>
+</div>
+</body>
+</html>
