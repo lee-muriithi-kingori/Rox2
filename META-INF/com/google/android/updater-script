@@ -1,0 +1,4 @@
+#!/sbin/sh
+# Rox2 - updater-script
+# Generic Magisk module - Magisk handles installation for us.
+ui_print "Rox2 v1.0 module loader"

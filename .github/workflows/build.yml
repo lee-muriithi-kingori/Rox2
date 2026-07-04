@@ -1,0 +1,78 @@
+# Build and release Rox2
+
+I built this workflow so every tag turns into a release ZIP with a SHA256
+checksum. It runs on the same Ubuntu image I tested locally, so what you
+get from CI matches what you would build by hand.
+
+on:
+  push:
+    branches: [ main ]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install JDK + tools
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r26b
+        link-to-system-ndk: true
+
+    - name: Build module ZIP
+      run: |
+        chmod +x build.sh
+        ./build.sh
+
+    - name: List artifacts
+      run: |
+        ls -la output/
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Rox2
+        path: |
+          output/*.zip
+          output/*.sha256
+          output/update.json
+
+    - name: Release on tag
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          output/*.zip
+          output/*.sha256
+          output/update.json
+        body: |
+          # Rox2 ${{ github.ref_name }}
+
+          See [CHANGELOG.md](../blob/main/CHANGELOG.md) for what is in this release.
+
+          ## Install
+          1. Download `Rox2-${{ github.ref_name }}.zip`
+          2. Install via Magisk, KernelSU, or APatch
+          3. Reboot
+          4. Open the WebUI and add any packages you actually want to see root
+
+          Pre-claim: this module ships **no** fake attestation chains.
+          If a target app needs Play Integrity **STRONG**, point Rox2 at a
+          keybox from TrickyStore on **your own device**. The README says so.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

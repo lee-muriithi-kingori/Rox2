@@ -1,0 +1,13 @@
+id=Rox2
+name=Rox2 - Root Hider
+version=v1.0
+versionCode=100
+author=lee-muriithi-kingori
+description=I built Rox2 because I wanted a clean module that hides root from apps that shouldn't see it, and lets me allow apps I trust through a WebUI. Default-deny with an explicit allowlist. No fake keys, no fake passmark.
+updateJson=https://raw.githubusercontent.com/lee-muriithi-kingori/Rox2/main/update.json
+support=https://github.com/lee-muriithi-kingori/Rox2/issues
+community=https://t.me/lestramk
+donate=https://github.com/sponsors/lee-muriithi-kingori
+webroot=webroot
+minMagisk=27000
+minApi=24

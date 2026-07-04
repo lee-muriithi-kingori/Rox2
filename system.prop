@@ -1,0 +1,40 @@
+# Rox2 System Properties v1.0
+# These are the boot-time properties I want every protected app to see.
+# Rox2 applies them during post-fs-data so they're in place before Zygote starts.
+
+# Build properties — clean user-build
+ro.build.tags=release-keys
+ro.build.type=user
+ro.secure=1
+ro.adb.secure=1
+ro.debuggable=0
+ro.force.debuggable=0
+
+# Verified boot — locked/enforcing chain
+ro.boot.flash.locked=1
+ro.boot.verifiedbootstate=green
+ro.boot.veritymode=enforcing
+ro.boot.vbmeta.device_state=locked
+vendor.boot.verifiedbootstate=green
+vendor.boot.vbmeta.device_state=locked
+
+# Secureboot
+ro.secureboot.lockstate=locked
+ro.secureboot.devicelock=1
+ro.boot.secureboot=1
+
+# OEM unlock disabled
+sys.oem_unlock_allowed=0
+vendor.boot.flash.locked=1
+
+# Boot mode — always boot (never recovery)
+ro.boot.mode=boot
+ro.bootmode=boot
+vendor.boot.mode=boot
+
+# Crypto — every protected app expects encrypted userdata
+ro.crypto.state=encrypted
+ro.crypto.type=file
+
+# Developer indicators
+persist.sys.adb.notify=0

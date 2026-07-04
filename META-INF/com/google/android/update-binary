@@ -1,0 +1,6 @@
+#!/sbin/sh
+# Rox2 - update-binary
+# Magisk module-installer entrypoint. Just hands off to the customize
+# script and prints status.
+. "$MODPATH/customize.sh"
+exit 0

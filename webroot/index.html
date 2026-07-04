@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<title>Rox2</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2128;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text2: #8b949e;
+  --accent: #58a6ff;
+  --accent-soft: rgba(88,166,255,0.15);
+  --success: #3fb950;
+  --success-bg: rgba(63,185,80,0.15);
+  --warn: #d29922;
+  --warn-bg: rgba(210,153,34,0.15);
+  --error: #f85149;
+  --error-bg: rgba(248,81,73,0.15);
+  --radius: 14px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.5;
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+}
+.app { max-width: 760px; margin: 0 auto; padding: 16px; }
+.header {
+  background: var(--surface); border-radius: var(--radius); padding: 20px;
+  margin-bottom: 16px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.header::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--accent), #1f6feb);
+}
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+.title em { color: var(--accent); font-style: normal; }
+.vbadge {
+  background: var(--accent-soft); color: var(--accent); padding: 4px 12px;
+  border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.subtitle { font-size: 13px; color: var(--text2); }
+.subtitle a { color: var(--accent); text-decoration: none; }
+
+.banner {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 16px; margin: 12px 0; font-size: 12px;
+}
+.banner.info   { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.banner.warn   { background: var(--warn-bg);    color: var(--warn);    border-color: var(--warn); }
+.banner.ro     { background: var(--warn-bg);    color: var(--warn);    border-color: var(--warn); display: none; }
+.banner.ro.show { display: block; }
+
+.section {
+  background: var(--surface); border-radius: var(--radius); margin-bottom: 16px;
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.section-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.section-title { font-size: 15px; font-weight: 600; }
+.section-count {
+  background: var(--accent-soft); color: var(--accent);
+  padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;
+}
+.section-body { padding: 8px 0; }
+.row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.row:last-child { border-bottom: none; }
+.row .info { flex: 1; min-width: 0; }
+.row .label { font-size: 14px; font-weight: 500; }
+.row .desc  { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.switch { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: #484f58; border-radius: 28px; transition: 0.3s;
+}
+.slider::before {
+  content: ''; position: absolute; height: 22px; width: 22px;
+  left: 3px; bottom: 3px; background: white; border-radius: 50%;
+  transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.switch input:checked + .slider { background: var(--success); }
+.switch input:checked + .slider::before { transform: translateX(20px); }
+.switch input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 11px 18px; border-radius: 8px; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.15s;
+  width: 100%;
+}
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: #0d1117; }
+.btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+.btn-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 20px;
+}
+.btn-row.single { grid-template-columns: 1fr; }
+
+.input-row { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
+.input-field {
+  flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 14px;
+}
+.input-field:focus { outline: none; border-color: var(--accent); }
+.input-field::placeholder { color: var(--text2); }
+
+.app-list { max-height: 360px; overflow-y: auto; }
+.app-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.app-item:last-child { border-bottom: none; }
+.app-pkg { flex: 1; min-width: 0; }
+.app-pkg-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.app-pkg-meta { color: var(--text2); font-size: 11px; font-family: 'SF Mono', monospace; }
+.app-tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+.app-tag.allow { background: var(--success-bg); color: var(--success); }
+.app-tag.deny  { background: var(--error-bg); color: var(--error); }
+.app-tag.rm    { background: var(--surface2); color: var(--text2); }
+
+.log {
+  background: #0d1117; color: var(--text); padding: 12px 16px;
+  font-family: 'SF Mono', Monaco, monospace; font-size: 11px; line-height: 1.6;
+  max-height: 280px; overflow-y: auto; white-space: pre-wrap;
+}
+.log .info  { color: var(--accent); }
+.log .warn  { color: var(--warn); }
+.log .error { color: var(--error); }
+
+.toasts {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  background: var(--surface); color: var(--text); padding: 12px 20px;
+  border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  font-size: 13px; font-weight: 500; animation: in 0.3s ease, out 0.3s ease 2.7s forwards;
+  border: 1px solid var(--border); pointer-events: auto;
+}
+.toast.success { border-left: 4px solid var(--success); }
+.toast.warn    { border-left: 4px solid var(--warn); }
+.toast.error   { border-left: 4px solid var(--error); }
+@keyframes in  { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform:none; } }
+@keyframes out { to { opacity:0; transform: translateY(-20px); } }
+
+.footer { text-align: center; padding: 20px; font-size: 12px; color: var(--text2); }
+.footer a { color: var(--accent); text-decoration: none; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="title">R<em>o</em>x2</div>
+      <span class="vbadge" id="versionBadge">v1.0</span>
+    </div>
+    <div class="subtitle">
+      Root hider by <strong>lee-muriithi-kingori</strong>.
+      Builds: <span id="rootBadge">detecting...</span> &middot;
+      Status: <span id="statusBadge">checking</span>
+    </div>
+  </div>
+
+  <div class="banner ro" id="roBanner">
+    <strong>Browser / read-only.</strong> You opened Rox2 outside a root manager.
+    Allowlist edits need the KernelSU/APatch WebView or the Magisk action button.
+    Shizuku also works.
+  </div>
+
+  <div class="banner info" id="infoBanner">
+    <strong>Default-deny.</strong> Every app is hidden from root by default.
+    Add a package to the allowlist below only if you trust it. The three root-manager
+    packages (Magisk, KernelSU, APatch) are auto-allowed so the manager itself keeps working.
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- Module toggles                                                   -->
+  <!-- ============================================================== -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Hiding</span>
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <div class="info">
+          <div class="label">Spoof boot / verified boot props</div>
+          <div class="desc">Set locked/enforcing at post-fs-data before Zygote</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="t_spoof" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="row">
+        <div class="info">
+          <div class="label">Hide keystore / root-solution leaks</div>
+          <div class="desc">Strip Magisk/KSU/APatch property markers</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="t_keystore" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="row">
+        <div class="info">
+          <div class="label">Zygisk mount-namespace hide</div>
+          <div class="desc">Per-app unmount when not on the allowlist</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="t_zygisk" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- Allowlist                                                        -->
+  <!-- ============================================================== -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Allowlist</span>
+      <span class="section-count" id="allowCount">0</span>
+    </div>
+    <div class="section-body">
+      <div class="input-row">
+        <input class="input-field" id="pkgInput" placeholder="com.example.app" autocomplete="off" spellcheck="false">
+        <button class="btn primary" id="btnAdd" style="width:auto;padding:10px 16px">Add</button>
+      </div>
+
+      <div class="row" style="border-bottom: none;">
+        <div class="info">
+          <div class="label">Quick fill from installed apps</div>
+          <div class="desc">Pick from packages actually on this device</div>
+        </div>
+        <button class="btn secondary" id="btnRefreshInstalled" style="width:auto;padding:8px 12px">Refresh</button>
+      </div>
+
+      <div class="app-list" id="allowList"></div>
+
+      <div class="btn-row">
+        <button class="btn secondary" id="btnSaveAllowlist">Reload from disk</button>
+        <button class="btn secondary" id="btnPurgeAllowlist">Clear all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- Installed apps (reference)                                        -->
+  <!-- ============================================================== -->
+  <div class="section" id="installedSection">
+    <div class="section-header">
+      <span class="section-title">Installed apps</span>
+      <span class="section-count" id="installedCount">?</span>
+    </div>
+    <div class="section-body">
+      <div class="app-list" id="installedList">
+        <div class="app-item">
+          <div class="app-pkg">
+            <div class="app-pkg-name">Tap "Refresh" above to load installed apps.</div>
+            <div class="app-pkg-meta">only visible when WebUI can exec()</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- Logs                                                              -->
+  <!-- ============================================================== -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Logs</span>
+    </div>
+    <div class="section-body">
+      <div class="log" id="logViewer">Loading...</div>
+      <div class="btn-row">
+        <button class="btn secondary" id="btnRefreshLogs">Refresh</button>
+        <button class="btn secondary" id="btnClearLogs">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- Actions                                                           -->
+  <!-- ============================================================== -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Actions</span>
+    </div>
+    <div class="section-body">
+      <div class="btn-row single">
+        <button class="btn primary" id="btnApplyHide">Re-apply hide now</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" id="btnSaveFlags">Save toggle state</button>
+        <button class="btn secondary" id="btnReloadPage">Reload page</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Rox2 v1.0 &mdash; <a href="https://t.me/lestramk">@lestramk</a> &middot;
+    <a href="https://github.com/lee-muriithi-kingori/Rox2">GitHub</a>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const MOD = 'Rox2';
+const MOD_PATH = '/data/adb/modules/' + MOD;
+const LOG_PATH = '/data/local/tmp/Rox2.log';
+const ALLOWLIST_PATH = MOD_PATH + '/allowlist.json';
+
+function detectManager() {
+  if (typeof window.ksu !== 'undefined') return 'kernelsu';
+  if (typeof window.apatch !== 'undefined') return 'apatch';
+  return 'browser';
+}
+const mgr = detectManager();
+let readOnly = mgr === 'browser';
+
+// --- exec wrapper that prefers Shizuku > native > none ----------------------
+async function exec(cmd) {
+  if (window.shizuku && typeof window.shizuku.exec === 'function') {
+    try {
+      const r = await window.shizuku.exec(cmd, { stdin:'', redirect:false });
+      return { errno: 0, stdout: (r||'').toString(), stderr: '' };
+    } catch (e) {}
+  }
+  if (window.ksu)        return await window.ksu.exec(cmd);
+  if (window.apatch)     return await window.apatch.exec(cmd);
+  return { errno: -1, stdout: '', stderr: 'No exec API' };
+}
+
+// ---------------------------------------------------------------------------
+function toast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind||'success');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ---------------------------------------------------------------------------
+async function loadAllowlist() {
+  let raw = '';
+  if (readOnly) {
+    try {
+      const r = await fetch(ALLOWLIST_PATH);
+      if (r.ok) raw = await r.text();
+    } catch (e) {}
+  } else {
+    const r = await exec('cat "' + ALLOWLIST_PATH + '" 2>/dev/null');
+    if (r.errno === 0) raw = r.stdout;
+  }
+  if (!raw) { raw = '{"allow":[],"deny_root_manager":true,"version":1}'; }
+  return parseAllowlist(raw);
+}
+
+function parseAllowlist(raw) {
+  const out = { allow: [], raw };
+  try {
+    const j = JSON.parse(raw);
+    if (Array.isArray(j.allow)) out.allow = j.allow.slice();
+  } catch (e) {}
+  return out;
+}
+
+function renderAllowlist(allowlist) {
+  const ul = document.getElementById('allowList');
+  const cnt = document.getElementById('allowCount');
+  ul.innerHTML = '';
+  cnt.textContent = allowlist.allow.length;
+  const sorted = allowlist.allow.slice().sort();
+  sorted.forEach(pkg => {
+    const div = document.createElement('div');
+    div.className = 'app-item';
+    const meta = isManager(pkg) ? '<span class="app-tag allow">Root manager</span>' : '<span class="app-tag allow">Allowed</span>';
+    div.innerHTML =
+      '<div class="app-pkg">' +
+        '<div class="app-pkg-name">' + esc(pkg.split('.').pop()) + '</div>' +
+        '<div class="app-pkg-meta">' + esc(pkg) + '</div>' +
+      '</div>' + meta +
+      '<button class="btn secondary" data-rm="' + esc(pkg) + '" style="width:auto;padding:6px 10px">Remove</button>';
+    ul.appendChild(div);
+  });
+  ul.querySelectorAll('[data-rm]').forEach(b => {
+    b.onclick = () => removeFromAllowlist(b.dataset.rm);
+  });
+}
+
+function isManager(pkg) {
+  return pkg === 'com.topjohnwu.magisk' || pkg === 'me.weishu.kernelsu' || pkg === 'me.bmax.apatch';
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ---------------------------------------------------------------------------
+async function saveAllowlist(list) {
+  const json = JSON.stringify({ allow: list, deny_root_manager: true, version: 1 }, null, 2);
+  if (readOnly) { toast('Read-only', 'warn'); return false; }
+  const r = await exec('cat > ' + ALLOWLIST_PATH + ' <<\\JSON\n' + json + '\nJSON\nchmod 644 ' + ALLOWLIST_PATH);
+  return r.errno === 0;
+}
+
+async function addToAllowlist(pkg) {
+  pkg = (pkg||'').trim();
+  if (!pkg || !/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+$/.test(pkg)) {
+    toast('Invalid package id', 'warn'); return;
+  }
+  const cur = await loadAllowlist();
+  if (cur.allow.indexOf(pkg) >= 0) { toast('Already on allowlist', 'warn'); return; }
+  cur.allow.push(pkg);
+  if (await saveAllowlist(cur.allow)) {
+    renderAllowlist(cur);
+    toast('Allowed ' + pkg, 'success');
+  } else toast('Failed to save', 'error');
+}
+
+async function removeFromAllowlist(pkg) {
+  const cur = await loadAllowlist();
+  cur.allow = cur.allow.filter(p => p !== pkg);
+  if (await saveAllowlist(cur.allow)) {
+    renderAllowlist(cur);
+    toast('Removed ' + pkg, 'success');
+  } else toast('Failed to save', 'error');
+}
+
+async function clearAllowlist() {
+  if (!confirm('Clear the allowlist? Root managers will still be auto-allowed.')) return;
+  const cur = await loadAllowlist();
+  cur.allow = cur.allow.filter(isManager);
+  if (await saveAllowlist(cur.allow)) {
+    renderAllowlist(cur);
+    toast('Allowlist cleared', 'success');
+  }
+}
+
+// ---------------------------------------------------------------------------
+async function refreshInstalled() {
+  if (readOnly) { toast('Browser mode — installing list unavailable', 'warn'); return; }
+  const r = await exec('pm list packages 2>/dev/null | sed "s/^package://"');
+  if (r.errno !== 0) { toast('pm failed', 'error'); return; }
+  const installed = r.stdout.split('\n').filter(Boolean);
+  document.getElementById('installedCount').textContent = installed.length;
+  const cur = await loadAllowlist();
+  const allowSet = new Set(cur.allow);
+  const ul = document.getElementById('installedList');
+  ul.innerHTML = '';
+  installed.sort().forEach(pkg => {
+    const isAllowed = allowSet.has(pkg);
+    const div = document.createElement('div');
+    div.className = 'app-item';
+    div.innerHTML =
+      '<div class="app-pkg">' +
+        '<div class="app-pkg-name">' + esc(pkg.split('.').pop()) + '</div>' +
+        '<div class="app-pkg-meta">' + esc(pkg) + '</div>' +
+      '</div>' +
+      '<span class="app-tag ' + (isAllowed ? 'allow':'deny') + '">' + (isAllowed ? 'allow':'deny') + '</span>' +
+      '<button class="btn secondary" data-toggle="' + esc(pkg) + '" style="width:auto;padding:6px 10px">' +
+        (isAllowed ? 'Remove' : 'Add') +
+      '</button>';
+    ul.appendChild(div);
+  });
+  ul.querySelectorAll('[data-toggle]').forEach(b => {
+    b.onclick = () => {
+      const pkg = b.dataset.toggle;
+      if (allowSet.has(pkg)) removeFromAllowlist(pkg);
+      else addToAllowlist(pkg);
+      setTimeout(refreshInstalled, 400);
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+async function loadLogs() {
+  const v = document.getElementById('logViewer');
+  if (readOnly) { v.textContent = 'Open the WebUI from a root manager for live logs.'; return; }
+  const r = await exec('tail -80 ' + LOG_PATH + ' 2>/dev/null || echo "no logs yet"');
+  v.innerHTML = (r.stdout||'').split('\n').map(l => {
+    let cls = '';
+    if (/\[ERROR\]/.test(l)) cls = 'error';
+    else if (/\[WARN\]/.test(l)) cls = 'warn';
+    else if (/\[INFO\]/.test(l)) cls = 'info';
+    return '<div class="' + cls + '">' + esc(l) + '</div>';
+  }).join('');
+  v.scrollTop = v.scrollHeight;
+}
+
+async function clearLogs() {
+  if (readOnly) { toast('Read-only', 'warn'); return; }
+  const r = await exec('echo > ' + LOG_PATH);
+  if (r.errno === 0) { toast('Logs cleared', 'success'); loadLogs(); }
+}
+
+async function applyHide() {
+  if (readOnly) { toast('Read-only', 'warn'); return; }
+  toast('Re-applying...', 'success');
+  const r = await exec('sh "' + MOD_PATH + '/hide_root.sh"');
+  toast(r.errno === 0 ? 'Done' : 'Failed', r.errno === 0 ? 'success' : 'error');
+  loadLogs();
+}
+
+// ---------------------------------------------------------------------------
+async function loadToggles() {
+  const flags = ['t_spoof', 't_keystore', 't_zygisk'];
+  for (const id of flags) {
+    if (readOnly) continue;
+    const r = await exec('cat "' + MOD_PATH + '/.flag_' + id + '" 2>/dev/null');
+    if (r.errno === 0 && r.stdout) {
+      document.getElementById(id).checked = r.stdout.trim() === '1';
+    }
+  }
+  const sd = await exec('cat "' + MOD_PATH + '/.state_post_fs_data_done" 2>/dev/null');
+  document.getElementById('statusBadge').textContent = (sd.errno === 0 && sd.stdout.trim() === '1') ? 'ready' : 'rebooting';
+}
+
+async function saveToggles() {
+  if (readOnly) { toast('Read-only', 'warn'); return; }
+  for (const id of ['t_spoof','t_keystore','t_zygisk']) {
+    const v = document.getElementById(id).checked ? '1' : '0';
+    await exec('echo ' + v + ' > "' + MOD_PATH + '/.flag_' + id + '" && chmod 644 "' + MOD_PATH + '/.flag_' + id + '"');
+  }
+  toast('Saved', 'success');
+}
+
+// ---------------------------------------------------------------------------
+async function updateBadge() {
+  if (!readOnly) {
+    const r = await exec('echo $KSU $APATCH $MAGISK_VER');
+    const o = (r.stdout||'');
+    document.getElementById('rootBadge').textContent = /true/.test(o) ? 'KernelSU' :
+                                                        /APATCH/.test(o) ? 'APatch' :
+                                                        /MAGISK/.test(o) ? 'Magisk' : 'unknown';
+  } else {
+    document.getElementById('rootBadge').textContent = 'browser (read-only)';
+    document.getElementById('roBanner').classList.add('show');
+  }
+}
+
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+  await updateBadge();
+  await loadToggles();
+  renderAllowlist(await loadAllowlist());
+  await loadLogs();
+
+  document.getElementById('btnAdd').onclick              = () => addToAllowlist(document.getElementById('pkgInput').value);
+  document.getElementById('pkgInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btnAdd').click(); });
+  document.getElementById('btnSaveAllowlist').onclick    = async () => { renderAllowlist(await loadAllowlist()); toast('Reloaded', 'success'); };
+  document.getElementById('btnPurgeAllowlist').onclick   = clearAllowlist;
+  document.getElementById('btnRefreshInstalled').onclick = refreshInstalled;
+  document.getElementById('btnRefreshLogs').onclick      = loadLogs;
+  document.getElementById('btnClearLogs').onclick        = clearLogs;
+  document.getElementById('btnApplyHide').onclick        = applyHide;
+  document.getElementById('btnSaveFlags').onclick        = saveToggles;
+  document.getElementById('btnReloadPage').onclick       = () => location.reload();
+
+  setInterval(async () => {
+    renderAllowlist(await loadAllowlist());
+    if (!readOnly) loadLogs();
+  }, 15000);
+});
+</script>
+</body>
+</html>
